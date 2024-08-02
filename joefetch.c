@@ -8,12 +8,12 @@
 #include <sys/stat.h>
 #include <sys/sysinfo.h>
 #include <sys/utsname.h>
+#include "config.h"
+#define NUM_ICONS 10
 
 #define BUFFER_SIZE 1024
 #define ASCII_WIDTH 40
 #define MAX_OUTPUT_LENGTH 4096
-#define INFO_WIDTH 50
-#define TOTAL_HEIGHT 25
 
 typedef struct {
     char *label;
@@ -78,14 +78,14 @@ void *fetch_and_append(void *arg) {
 }
 
 void append_static_info() {
-    append_to_output("OS", os_name);
-    append_to_output("Kernel", kernel_version);
-    append_to_output("Hostname", hostname);
-    append_to_output("Shell", shell);
+    append_to_output(" OS", os_name);
+    append_to_output(" Kernel", kernel_version);
+    append_to_output(" Hostname", hostname);
+    append_to_output(" Shell", shell);
 }
 
-void prepare_info_lines(char *info_lines[], int *num_lines) {
-    memset(info_lines, 0, sizeof(char *) * TOTAL_HEIGHT);
+void prepare_info_lines(const char *info_lines[], int *num_lines) {
+    memset((void *)info_lines, 0, sizeof(char *) * TOTAL_HEIGHT);
     char *line = strtok(output_buffer, "\n");
     int index = 0;
     while (line && index < TOTAL_HEIGHT) {
@@ -95,41 +95,66 @@ void prepare_info_lines(char *info_lines[], int *num_lines) {
     *num_lines = index;
 }
 
-void print_ascii_and_info(const char *ascii_logo[], int num_ascii_lines, char *info_lines[], int num_info_lines) {
-    int max_lines = num_ascii_lines > num_info_lines ? num_ascii_lines : num_info_lines;
-    int info_start_line = (TOTAL_HEIGHT - max_lines) / 2 + num_ascii_lines;
+void print_ascii_and_info(const char *info_lines[], int num_info_lines) {
+    const char *colors[] = {RED_COLOR, GREEN_COLOR, YELLOW_COLOR, BLUE_COLOR, MAGENTA_COLOR, CYAN_COLOR, WHITE_COLOR};
+    const char *icons[NUM_ICONS] = {
+        "", "", "", "", "", "", "", "", "", ""
+    };
+    int num_colors = sizeof(colors) / sizeof(colors[0]);
 
-    for (int i = 0; i < num_ascii_lines; i++) {
-        printf("%s\n", ascii_logo[i]);
+    // Print ASCII logo with configurable color
+    for (int i = 0; i < ASCII_LOGO_LINES; i++) {
+        printf("%s%s\n", ASCII_LOGO_COLOR, ascii_logo[i]);
     }
 
-    for (int i = num_ascii_lines; i < info_start_line; i++) {
+    int max_lines = ASCII_LOGO_LINES > num_info_lines ? ASCII_LOGO_LINES : num_info_lines;
+    int info_start_line = (TOTAL_HEIGHT - max_lines) / 2 + ASCII_LOGO_LINES;
+
+    for (int i = ASCII_LOGO_LINES; i < info_start_line; i++) {
         printf("\n");
     }
 
+    int color_index = 0;
     for (int i = 0; i < max_lines; i++) {
-        printf("%-*s\n", INFO_WIDTH, i < num_info_lines ? info_lines[i] : "");
+        if (i < num_info_lines) {
+            int icon_found = 0;
+            for (int j = 0; j < NUM_ICONS; j++) {
+                if (strstr(info_lines[i], icons[j])) {
+                    printf("%s%-*s%s\n", colors[color_index % num_colors], INFO_WIDTH, info_lines[i], RESET_COLOR);
+                    color_index++;
+                    icon_found = 1;
+                    break;
+                }
+            }
+            if (!icon_found) {
+                printf("%s%-*s%s\n", GREEN_COLOR, INFO_WIDTH, info_lines[i], RESET_COLOR);
+            }
+        } else {
+            printf("%-*s\n", INFO_WIDTH, "");
+        }
     }
 }
 
 int main() {
-    struct timespec start, end;
-    clock_gettime(CLOCK_MONOTONIC, &start);
+    clock_t start, end;
+    double time_spent;
+
+    start = clock();
 
     init_static_info();
 
     const Command commands[] = {
-        {"Uptime", "awk '{print int($1/3600) \" hours, \" int(($1%3600)/60) \" minutes\"}' /proc/uptime"},
-        {"Memory", "grep 'MemTotal:' /proc/meminfo | awk '{print $2/1024 \" MB\"}'"},
-        {"Used Memory", "grep 'MemAvailable:' /proc/meminfo | awk '{printf \"%.2f MB\", $2/1024}'"},
-        {"CPU", "grep 'model name' /proc/cpuinfo | head -1 | cut -d ':' -f 2- | sed 's/^ //'"}, 
-        {"CPU Cores", "grep -c '^processor' /proc/cpuinfo"},
-        {"Disk", "df -h / | tail -1 | awk '{print $3 \"/\" $2 \" used (\" $5 \")\"}'"},
-        {"GPU", "lspci | grep -i 'vga\\|3d\\|2d' | cut -d ':' -f 3 | sed 's/^ //'"}, 
-        {"Resolution", "xdpyinfo | grep dimensions | awk '{print $2}'"},
-        {"Processes", "ps ax | wc -l | awk '{print $1 \" running\"}'"},
-        {"IP Address", "ip addr show | grep 'inet ' | awk '{print $2}' | head -1 | cut -d '/' -f 1"},
-        {"MAC Address", "ip link show | grep link/ether | awk '{print $2}'"}
+        {" Uptime", "awk '{print int($1/3600) \" hours, \" int(($1%3600)/60) \" minutes\"}' /proc/uptime"},
+        {" Memory", "grep 'MemTotal:' /proc/meminfo | awk '{print $2/1024 \" MB\"}'"},
+        {" Used Memory", "grep 'MemAvailable:' /proc/meminfo | awk '{printf \"%.2f MB\", $2/1024}'"},
+        {" CPU", "grep 'model name' /proc/cpuinfo | head -1 | cut -d ':' -f 2- | sed 's/^ //'"}, 
+        {" CPU Cores", "grep -c '^processor' /proc/cpuinfo"},
+        {" Disk", "df -h / | tail -1 | awk '{print $3 \"/\" $2 \" used (\" $5 \")\"}'"},
+        {" GPU", "lspci | grep -i 'vga\\|3d\\|2d' | cut -d ':' -f 3 | sed 's/^ //'"}, 
+        {" Resolution", "xdpyinfo | grep dimensions | awk '{print $2}'"},
+        {" Processes", "ps ax | wc -l | awk '{print $1 \" running\"}'"},
+        {"󰩟 IP Address", "ip addr show | grep 'inet ' | awk '{print $2}' | head -1 | cut -d '/' -f 1"},
+        {"󰇄 MAC Address", "ip link show | grep link/ether | awk '{print $2}'"}
     };
 
     int num_commands = sizeof(commands) / sizeof(commands[0]);
@@ -145,25 +170,14 @@ int main() {
         pthread_join(threads[i], NULL);
     }
 
-    const char *ascii_logo[] = {
-        "    .--.",
-        "   |o_o |",
-        "   |:_/ |",
-        "  //   \\ \\",
-        " (|     | )",
-        "/'\\_   _/`\\",
-        "\\___)=(___/"
-    };
-    int num_ascii_lines = sizeof(ascii_logo) / sizeof(ascii_logo[0]);
-
-    char *info_lines[TOTAL_HEIGHT] = {NULL};
+    const char *info_lines[TOTAL_HEIGHT] = {NULL};
     int num_info_lines = 0;
     prepare_info_lines(info_lines, &num_info_lines);
 
-    print_ascii_and_info(ascii_logo, num_ascii_lines, info_lines, num_info_lines);
+    print_ascii_and_info(info_lines, num_info_lines);
 
-    clock_gettime(CLOCK_MONOTONIC, &end);
-    double time_spent = (end.tv_sec - start.tv_sec) + 1e-9 * (end.tv_nsec - start.tv_nsec);
+    end = clock();
+    time_spent = (double)(end - start) / CLOCKS_PER_SEC;
     printf("\nExecution Time: %.6f seconds\n", time_spent);
 
     return 0;
