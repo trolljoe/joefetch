@@ -1,6 +1,9 @@
 # joefetch
 the BESTEST FETCH EVER!!!
 
+# WARNING!!
+install script doesn't work on fish, so please modify it for fish.
+
 # how to compile
 
 - Using zig
