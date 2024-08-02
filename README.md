@@ -1,6 +1,10 @@
 # joefetch
 the BESTEST FETCH EVER!!!
 
+# requirements
+[any of the nerdfonts](https://www.nerdfonts.com)
+gcc (or zig)
+
 # WARNING!!
 install script doesn't work on fish, so please modify it for fish.
 
