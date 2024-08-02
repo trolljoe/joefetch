@@ -1,16 +1,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define ASCII_LOGO_LINES 7
-const char *ascii_logo[ASCII_LOGO_LINES] = {
-    "    .--.",
-    "   |o_o |",
-    "   |:_/ |",
-    "  //   \\ \\",
-    " (|     | )",
-    "/'\\_   _/`\\",
-    "\\___)=(___/"
-};
+#define ASCII_LOGO_LINES 10
+#define ASCII_FILE_PATH "ascii.txt"
 
 #define INFO_WIDTH 50
 #define TOTAL_HEIGHT 25
