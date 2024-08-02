@@ -8,3 +8,5 @@ the BESTEST FETCH EVER!!!
 
 - Using gcc
 `gcc joefetch.c -o joefetch`
+
+to apply config, you must recompile the fetch every time
