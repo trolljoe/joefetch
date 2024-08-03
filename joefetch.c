@@ -92,23 +92,43 @@ void init_static_info() {
     FILE *fp = fopen("/etc/os-release", "r");
     if (fp) {
         while (fgets(os_name, sizeof(os_name), fp)) {
+            printf("Read line: %s", os_name);
             if (strncmp(os_name, "PRETTY_NAME=", 12) == 0) {
-                strcpy(os_name, strchr(os_name, '=') + 1);
-                os_name[strcspn(os_name, "\"")] = '\0';
+                char *start = strchr(os_name, '=') + 1;
+                if (start) {
+                    if (start[0] == '"') {
+                        start++;
+                    }
+                    char *end = strchr(start, '"');
+                    if (end) {
+                        *end = '\0';
+                    }
+                    strcpy(os_name, start);
+                    printf("OS Name Found: %s\n", os_name);
+                }
                 break;
             }
         }
         fclose(fp);
+    } else {
+        perror("Failed to open /etc/os-release");
     }
 
     struct utsname uname_data;
     if (uname(&uname_data) == 0) {
         strcpy(kernel_version, uname_data.release);
+    } else {
+        perror("uname failed");
     }
 
-    gethostname(hostname, sizeof(hostname));
-    strcpy(shell, getenv("SHELL") ? getenv("SHELL") : "Unknown");
+    if (gethostname(hostname, sizeof(hostname)) != 0) {
+        perror("gethostname failed");
+    }
+
+    const char *shell_env = getenv("SHELL");
+    strcpy(shell, shell_env ? shell_env : "Unknown");
 }
+
 
 void append_to_output(const char *label, const char *data) {
     pthread_mutex_lock(&buffer_mutex);
@@ -138,6 +158,7 @@ void *fetch_and_append(void *arg) {
 }
 
 void append_static_info() {
+    printf("Appending Static Info...\n");
     append_to_output(" OS", os_name);
     append_to_output(" Kernel", kernel_version);
     append_to_output(" Hostname", hostname);
@@ -220,8 +241,7 @@ int main() {
         {" Disk", "df -h / | tail -1 | awk '{print $3 \"/\" $2 \" used (\" $5 \")\"}'"},
         {" GPU", "lspci | grep -i 'vga\\|3d\\|2d' | cut -d ':' -f 3 | sed 's/^ //'"}, 
         {" Resolution", "xdpyinfo | grep dimensions | awk '{print $2}'"},
-        {" Processes", "ps ax | wc -l | awk '{print $1 \" running\"}'"},
-        {"󰇄 MAC Address", "ip link show | grep link/ether | awk '{print $2}'"}
+        {" Processes", "ps ax | wc -l | awk '{print $1 \" running\"}'"}
     };
 
     int num_commands = sizeof(commands) / sizeof(commands[0]);
