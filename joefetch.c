@@ -195,7 +195,6 @@ int main() {
         {" GPU", "lspci | grep -i 'vga\\|3d\\|2d' | cut -d ':' -f 3 | sed 's/^ //'"}, 
         {" Resolution", "xdpyinfo | grep dimensions | awk '{print $2}'"},
         {" Processes", "ps ax | wc -l | awk '{print $1 \" running\"}'"},
-        {"󰩟 IP Address", "ip addr show | grep 'inet ' | awk '{print $2}' | head -1 | cut -d '/' -f 1"},
         {"󰇄 MAC Address", "ip link show | grep link/ether | awk '{print $2}'"}
     };
 
