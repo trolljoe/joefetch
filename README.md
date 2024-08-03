@@ -1,5 +1,4 @@
 # joefetch
-the BESTEST FETCH EVER!!!
 
 # requirements
 - [any of the nerdfonts](https://www.nerdfonts.com)
