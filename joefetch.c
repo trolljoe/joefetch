@@ -11,8 +11,8 @@
 #include <sys/sysinfo.h>
 #include <sys/utsname.h>
 #include "config.h"
-#define NUM_ICONS 10
 
+#define NUM_ICONS 10
 #define BUFFER_SIZE 1024
 #define ASCII_WIDTH 40
 #define MAX_OUTPUT_LENGTH 4096
@@ -44,7 +44,6 @@ char *get_executable_path(char *buffer, size_t bufsize) {
     return buffer;
 }
 
-
 const char **read_ascii_art(const char *file_path, int *num_lines) {
     char exe_path[PATH_MAX];
     if (!get_executable_path(exe_path, sizeof(exe_path))) {
@@ -53,14 +52,14 @@ const char **read_ascii_art(const char *file_path, int *num_lines) {
     }
 
     char ascii_file_path[PATH_MAX];
-    char *dir = dirname(exe_path);
-    snprintf(ascii_file_path, sizeof(ascii_file_path), "%s/%s", dir, file_path);
+    snprintf(ascii_file_path, sizeof(ascii_file_path), "%s/%s", dirname(exe_path), file_path);
 
     FILE *file = fopen(ascii_file_path, "r");
     if (!file) {
         perror("fopen");
         return NULL;
     }
+
     const char **lines = malloc(TOTAL_HEIGHT * sizeof(char *));
     if (!lines) {
         perror("malloc");
@@ -92,26 +91,19 @@ void init_static_info() {
     FILE *fp = fopen("/etc/os-release", "r");
     if (fp) {
         while (fgets(os_name, sizeof(os_name), fp)) {
-            printf("Read line: %s", os_name);
             if (strncmp(os_name, "PRETTY_NAME=", 12) == 0) {
                 char *start = strchr(os_name, '=') + 1;
-                if (start) {
-                    if (start[0] == '"') {
-                        start++;
-                    }
-                    char *end = strchr(start, '"');
-                    if (end) {
-                        *end = '\0';
-                    }
-                    strcpy(os_name, start);
-                    printf("OS Name Found: %s\n", os_name);
-                }
+                if (start[0] == '"') start++;
+                char *end = strchr(start, '"');
+                if (end) *end = '\0';
+                strcpy(os_name, start);
                 break;
             }
         }
         fclose(fp);
     } else {
         perror("Failed to open /etc/os-release");
+        strcpy(os_name, "Unknown");
     }
 
     struct utsname uname_data;
@@ -119,16 +111,17 @@ void init_static_info() {
         strcpy(kernel_version, uname_data.release);
     } else {
         perror("uname failed");
+        strcpy(kernel_version, "Unknown");
     }
 
     if (gethostname(hostname, sizeof(hostname)) != 0) {
         perror("gethostname failed");
+        strcpy(hostname, "Unknown");
     }
 
     const char *shell_env = getenv("SHELL");
     strcpy(shell, shell_env ? shell_env : "Unknown");
 }
-
 
 void append_to_output(const char *label, const char *data) {
     pthread_mutex_lock(&buffer_mutex);
@@ -158,7 +151,6 @@ void *fetch_and_append(void *arg) {
 }
 
 void append_static_info() {
-    printf("Appending Static Info...\n");
     append_to_output(" OS", os_name);
     append_to_output(" Kernel", kernel_version);
     append_to_output(" Hostname", hostname);
@@ -196,10 +188,10 @@ void print_ascii_and_info(const char *info_lines[], int num_info_lines) {
     }
     free(ascii_logo);
 
-    int max_lines = ASCII_LOGO_LINES > num_info_lines ? ASCII_LOGO_LINES : num_info_lines;
-    int info_start_line = (TOTAL_HEIGHT - max_lines) / 2 + ASCII_LOGO_LINES;
+    int max_lines = ascii_logo_lines > num_info_lines ? ascii_logo_lines : num_info_lines;
+    int info_start_line = (TOTAL_HEIGHT - max_lines) / 2 + ascii_logo_lines;
 
-    for (int i = ASCII_LOGO_LINES; i < info_start_line; i++) {
+    for (int i = ascii_logo_lines; i < info_start_line; i++) {
         printf("\n");
     }
 
