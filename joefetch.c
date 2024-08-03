@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdbool.h>
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -11,7 +12,7 @@
 #include <sys/utsname.h>
 #include "config.h"
 
-#define NUM_ICONS 10
+#define NUM_ICONS 13
 #define BUFFER_SIZE 1024
 #define ASCII_WIDTH 40
 #define MAX_OUTPUT_LENGTH 4096
@@ -42,6 +43,7 @@ char *get_executable_path(char *buffer, size_t bufsize) {
     buffer[len] = '\0';
     return buffer;
 }
+
 
 const char **read_ascii_art(const char *file_path, int *num_lines) {
     char exe_path[PATH_MAX];
@@ -150,11 +152,17 @@ void *fetch_and_append(void *arg) {
 }
 
 void append_static_info() {
-    append_to_output(" OS", os_name);
-    append_to_output(" Kernel", kernel_version);
-    append_to_output(" Hostname", hostname);
-    append_to_output(" Shell", shell);
+    char icon_label[BUFFER_SIZE];
+    snprintf(icon_label, sizeof(icon_label), "%s %s", OS_ICON, OS_LABEL);
+    append_to_output(icon_label, os_name);
+    snprintf(icon_label, sizeof(icon_label), "%s %s", KERNEL_ICON, KERNEL_LABEL);
+    append_to_output(icon_label, kernel_version);
+    snprintf(icon_label, sizeof(icon_label), "%s %s", HOSTNAME_ICON, HOSTNAME_LABEL);
+    append_to_output(icon_label, hostname);
+    snprintf(icon_label, sizeof(icon_label), "%s %s", SHELL_ICON, SHELL_LABEL);
+    append_to_output(icon_label, shell);
 }
+
 
 void prepare_info_lines(const char *info_lines[], int *num_lines) {
     char *line = strtok(output_buffer, "\n");
@@ -166,15 +174,18 @@ void prepare_info_lines(const char *info_lines[], int *num_lines) {
     *num_lines = index;
 }
 
+
 void print_ascii_and_info(const char *info_lines[], int num_info_lines) {
-    const char *colors[] = {RED_COLOR, GREEN_COLOR, YELLOW_COLOR, BLUE_COLOR, MAGENTA_COLOR, CYAN_COLOR, WHITE_COLOR};
     const char *icons[NUM_ICONS] = {
-        "", "", "", "", "", "", "", "", "", ""
+        OS_ICON, KERNEL_ICON, HOSTNAME_ICON, SHELL_ICON, UPTIME_ICON, MEMORY_ICON, USED_MEMORY_ICON, CPU_ICON, CPU_CORES_ICON, DISK_ICON, GPU_ICON, RESOLUTION_ICON, PROCESSES_ICON
     };
+    const char *labels[NUM_ICONS] = {
+        OS_LABEL, KERNEL_LABEL, HOSTNAME_LABEL, SHELL_LABEL, UPTIME_LABEL, MEMORY_LABEL, USED_MEMORY_LABEL, CPU_LABEL, CPU_CORES_LABEL, DISK_LABEL, GPU_LABEL, RESOLUTION_LABEL, PROCESSES_LABEL
+    };
+    const char *colors[] = {GREEN_COLOR, RED_COLOR, YELLOW_COLOR, BLUE_COLOR, MAGENTA_COLOR, CYAN_COLOR, WHITE_COLOR};
     int num_colors = sizeof(colors) / sizeof(colors[0]);
     int ascii_logo_lines;
     const char **ascii_logo = read_ascii_art(ASCII_FILE_PATH, &ascii_logo_lines);
-
     if (!ascii_logo) {
         printf("Error reading ASCII art from %s\n", ASCII_FILE_PATH);
         return;
@@ -186,27 +197,33 @@ void print_ascii_and_info(const char *info_lines[], int num_info_lines) {
     }
     free(ascii_logo);
 
-    int max_lines = ascii_logo_lines > num_info_lines ? ascii_logo_lines : num_info_lines;
-    int info_start_line = (TOTAL_HEIGHT - max_lines) / 2 + ascii_logo_lines;
+    int max_lines = ASCII_LOGO_LINES > num_info_lines ? ASCII_LOGO_LINES : num_info_lines;
+    int info_start_line = (TOTAL_HEIGHT - max_lines) / 2 + ASCII_LOGO_LINES;
 
-    for (int i = ascii_logo_lines; i < info_start_line; i++) {
+    for (int i = ASCII_LOGO_LINES; i < info_start_line; i++) {
         printf("\n");
     }
 
-    int color_index = 0;
     for (int i = 0; i < max_lines; i++) {
         if (i < num_info_lines) {
+            const char *line = info_lines[i];
+            int color_index = 0;
             int icon_found = 0;
-            for (int j = 0; j < NUM_ICONS; j++) {
-                if (strstr(info_lines[i], icons[j])) {
-                    printf("%s%-*s%s\n", colors[color_index % num_colors], INFO_WIDTH, info_lines[i], RESET_COLOR);
-                    color_index++;
-                    icon_found = 1;
-                    break;
+
+            if (RAINBOW) {
+                for (int j = 0; j < NUM_ICONS; j++) {
+                    if (strstr(line, labels[j])) {
+                        color_index = j % num_colors;
+                        icon_found = 1;
+                        break;
+                    }
                 }
             }
-            if (!icon_found) {
-                printf("%s%-*s%s\n", GREEN_COLOR, INFO_WIDTH, info_lines[i], RESET_COLOR);
+
+            if (icon_found) {
+                printf("%s%-*s%s\n", colors[color_index], INFO_WIDTH, line, RESET_COLOR);
+            } else {
+                printf("%s%-*s%s\n", GREEN_COLOR, INFO_WIDTH, line, RESET_COLOR);
             }
         } else {
             printf("%-*s\n", INFO_WIDTH, "");
@@ -245,6 +262,7 @@ int main() {
         pthread_join(threads[i], NULL);
     }
 
+
     const char *info_lines[TOTAL_HEIGHT] = {NULL};
     int num_info_lines = 0;
     prepare_info_lines(info_lines, &num_info_lines);
@@ -252,7 +270,6 @@ int main() {
 
     end = clock();
     time_spent = (double)(end - start) / CLOCKS_PER_SEC;
-    printf("\nExecution Time: %.6f seconds\n", time_spent);
 
     return 0;
 }
