@@ -5,17 +5,29 @@ PROGRAM_NAME="joefetch"
 SOURCE_FILE="joefetch.c"
 EXE_DIR="$HOME/bin"
 EXE_PATH="$EXE_DIR/$PROGRAM_NAME"
-
+ASCII_FILE="ascii.txt"
+CONFIG_FILE="config.h"
 mkdir -p "$EXE_DIR"
-
 echo "Compiling $SOURCE_FILE..."
 gcc -o "$EXE_PATH" "$SOURCE_FILE"
 
 if [ $? -eq 0 ]; then
     echo "Compilation successful."
+    if [ -f "$ASCII_FILE" ]; then
+        cp "$ASCII_FILE" "$EXE_DIR/"
+        echo "Copied $ASCII_FILE to $EXE_DIR."
+    else
+        echo "Warning: $ASCII_FILE not found. Skipping copy."
+    fi
 
+    if [ -f "$CONFIG_FILE" ]; then
+        cp "$CONFIG_FILE" "$EXE_DIR/"
+        echo "Copied $CONFIG_FILE to $EXE_DIR."
+    else
+        echo "Warning: $CONFIG_FILE not found. Skipping copy."
+    fi
     if echo "$PATH" | grep -q "$EXE_DIR"; then
-        echo "Executable is already in PATH. Updated the executable."
+        echo "Executable directory is already in PATH."
     else
         echo "Adding $EXE_DIR to PATH..."
         echo "export PATH=\"\$PATH:$EXE_DIR\"" >> "$HOME/.bashrc"
