@@ -27,6 +27,40 @@ char os_name[BUFFER_SIZE];
 char kernel_version[BUFFER_SIZE];
 char hostname[BUFFER_SIZE];
 char shell[BUFFER_SIZE];
+const char **read_ascii_art(const char *file_path, int *num_lines) {
+    FILE *file = fopen(file_path, "r");
+    if (!file) {
+        perror("fopen");
+        return NULL;
+    }
+
+    // Allocate space for the lines
+    const char **lines = malloc(TOTAL_HEIGHT * sizeof(char *));
+    if (!lines) {
+        perror("malloc");
+        fclose(file);
+        return NULL;
+    }
+
+    char line[BUFFER_SIZE];
+    int count = 0;
+    while (fgets(line, sizeof(line), file) && count < TOTAL_HEIGHT) {
+        line[strcspn(line, "\n")] = '\0';
+        lines[count] = strdup(line);
+        if (!lines[count]) {
+            perror("strdup");
+            for (int i = 0; i < count; i++) free((void *)lines[i]);
+            free(lines);
+            fclose(file);
+            return NULL;
+        }
+        count++;
+    }
+
+    fclose(file);
+    *num_lines = count;
+    return lines;
+}
 
 void init_static_info() {
     FILE *fp = fopen("/etc/os-release", "r");
@@ -101,11 +135,19 @@ void print_ascii_and_info(const char *info_lines[], int num_info_lines) {
         "", "", "", "", "", "", "", "", "", ""
     };
     int num_colors = sizeof(colors) / sizeof(colors[0]);
+    int ascii_logo_lines;
+    const char **ascii_logo = read_ascii_art(ASCII_FILE_PATH, &ascii_logo_lines);
 
-    // Print ASCII logo with configurable color
-    for (int i = 0; i < ASCII_LOGO_LINES; i++) {
-        printf("%s%s\n", ASCII_LOGO_COLOR, ascii_logo[i]);
+    if (!ascii_logo) {
+        printf("Error reading ASCII art from %s\n", ASCII_FILE_PATH);
+        return;
     }
+
+    for (int i = 0; i < ascii_logo_lines; i++) {
+        printf("%s%s\n", GREEN_COLOR, ascii_logo[i]);
+        free((void *)ascii_logo[i]);
+    }
+    free(ascii_logo);
 
     int max_lines = ASCII_LOGO_LINES > num_info_lines ? ASCII_LOGO_LINES : num_info_lines;
     int info_start_line = (TOTAL_HEIGHT - max_lines) / 2 + ASCII_LOGO_LINES;
