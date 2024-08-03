@@ -6,6 +6,8 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <limits.h>
+#include <libgen.h>
 #include <sys/sysinfo.h>
 #include <sys/utsname.h>
 #include "config.h"
@@ -14,6 +16,10 @@
 #define BUFFER_SIZE 1024
 #define ASCII_WIDTH 40
 #define MAX_OUTPUT_LENGTH 4096
+
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 
 typedef struct {
     char *label;
@@ -27,14 +33,34 @@ char os_name[BUFFER_SIZE];
 char kernel_version[BUFFER_SIZE];
 char hostname[BUFFER_SIZE];
 char shell[BUFFER_SIZE];
+
+char *get_executable_path(char *buffer, size_t bufsize) {
+    ssize_t len = readlink("/proc/self/exe", buffer, bufsize - 1);
+    if (len == -1) {
+        perror("readlink");
+        return NULL;
+    }
+    buffer[len] = '\0';
+    return buffer;
+}
+
+
 const char **read_ascii_art(const char *file_path, int *num_lines) {
-    FILE *file = fopen(file_path, "r");
+    char exe_path[PATH_MAX];
+    if (!get_executable_path(exe_path, sizeof(exe_path))) {
+        perror("Failed to get executable path");
+        return NULL;
+    }
+
+    char ascii_file_path[PATH_MAX];
+    char *dir = dirname(exe_path);
+    snprintf(ascii_file_path, sizeof(ascii_file_path), "%s/%s", dir, file_path);
+
+    FILE *file = fopen(ascii_file_path, "r");
     if (!file) {
         perror("fopen");
         return NULL;
     }
-
-    // Allocate space for the lines
     const char **lines = malloc(TOTAL_HEIGHT * sizeof(char *));
     if (!lines) {
         perror("malloc");
