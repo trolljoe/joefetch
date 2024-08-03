@@ -1,4 +1,5 @@
-# joefetch
+![joefetch](joefetch.gif)
+> this looks like SHIT! - joetroll</small>
 
 # requirements
 - [any of the nerdfonts](https://www.nerdfonts.com)
