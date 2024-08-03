@@ -20,3 +20,6 @@ to apply config, you must recompile the fetch every time
 
 # why?
 it's main purpose is to be **fast** and **simple** to configure. it's an alternative to fastfetch but with actual simple configuration. it's also *one* C file, so you can change the source whenever you want.
+
+# i got a question!!!
+either open an issue or look at the wiki to see if your answer is there.
