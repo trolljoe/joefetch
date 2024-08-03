@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <time.h>
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -124,12 +123,12 @@ void init_static_info() {
 }
 
 void append_to_output(const char *label, const char *data) {
-    pthread_mutex_lock(&buffer_mutex);
     int required_space = snprintf(NULL, 0, "%-*s%s\n", INFO_WIDTH, label, data) + 1;
     if (offset + required_space < MAX_OUTPUT_LENGTH) {
+        pthread_mutex_lock(&buffer_mutex);
         offset += snprintf(output_buffer + offset, MAX_OUTPUT_LENGTH - offset, "%-*s%s\n", INFO_WIDTH, label, data);
+        pthread_mutex_unlock(&buffer_mutex);
     }
-    pthread_mutex_unlock(&buffer_mutex);
 }
 
 void *fetch_and_append(void *arg) {
@@ -158,7 +157,6 @@ void append_static_info() {
 }
 
 void prepare_info_lines(const char *info_lines[], int *num_lines) {
-    memset((void *)info_lines, 0, sizeof(char *) * TOTAL_HEIGHT);
     char *line = strtok(output_buffer, "\n");
     int index = 0;
     while (line && index < TOTAL_HEIGHT) {
@@ -238,13 +236,11 @@ int main() {
 
     int num_commands = sizeof(commands) / sizeof(commands[0]);
     pthread_t threads[num_commands];
-
     for (int i = 0; i < num_commands; ++i) {
         pthread_create(&threads[i], NULL, fetch_and_append, (void *)&commands[i]);
     }
 
     append_static_info();
-
     for (int i = 0; i < num_commands; ++i) {
         pthread_join(threads[i], NULL);
     }
@@ -252,7 +248,6 @@ int main() {
     const char *info_lines[TOTAL_HEIGHT] = {NULL};
     int num_info_lines = 0;
     prepare_info_lines(info_lines, &num_info_lines);
-
     print_ascii_and_info(info_lines, num_info_lines);
 
     end = clock();
