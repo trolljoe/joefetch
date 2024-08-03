@@ -9,7 +9,7 @@ ASCII_FILE="ascii.txt"
 CONFIG_FILE="config.h"
 mkdir -p "$EXE_DIR"
 echo "Compiling $SOURCE_FILE..."
-gcc -o "$EXE_PATH" "$SOURCE_FILE"
+gcc -o "$EXE_PATH" "$SOURCE_FILE" -03 -flto -march=native -ftree-vectorize -fomit-frame-pointer -funroll-loops
 
 if [ $? -eq 0 ]; then
     echo "Compilation successful."
