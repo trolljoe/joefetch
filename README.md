@@ -1,10 +1,6 @@
 ![joefetch](joefetch.gif)
 > this looks like SHIT! - joetroll</small>
 
-
-# WARNING!!
-install script doesn't work on fish, so please modify it for fish.
-
 ## requirements
 - [any of the nerdfonts](https://www.nerdfonts.com)
 - gcc (or zig)
