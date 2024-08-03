@@ -16,6 +16,34 @@
 #define CYAN_COLOR "\033[0;36m"
 #define WHITE_COLOR "\033[0;37m"
 
-#define ASCII_LOGO_COLOR "\033[0;36m"
+#define RAINBOW true
 
-#endif // CONFIG.H
+#define OS_LABEL "OS"
+#define KERNEL_LABEL "Kernel"
+#define HOSTNAME_LABEL "Hostname"
+#define SHELL_LABEL "Shell"
+#define UPTIME_LABEL "Uptime"
+#define MEMORY_LABEL "Memory"
+#define USED_MEMORY_LABEL "Used Memory"
+#define CPU_LABEL "CPU"
+#define CPU_CORES_LABEL "CPU Cores"
+#define DISK_LABEL "Disk"
+#define GPU_LABEL "GPU"
+#define RESOLUTION_LABEL "Resolution"
+#define PROCESSES_LABEL "Processes"
+
+#define OS_ICON ""
+#define KERNEL_ICON ""
+#define HOSTNAME_ICON ""
+#define SHELL_ICON ""
+#define UPTIME_ICON ""
+#define MEMORY_ICON ""
+#define USED_MEMORY_ICON ""
+#define CPU_ICON ""
+#define CPU_CORES_ICON ""
+#define DISK_ICON ""
+#define GPU_ICON ""
+#define RESOLUTION_ICON ""
+#define PROCESSES_ICON ""
+
+#endif // CONFIG_H
