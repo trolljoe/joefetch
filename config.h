@@ -5,7 +5,7 @@
 #define ASCII_FILE_PATH "ascii.txt"
 
 #define INFO_WIDTH 50
-#define TOTAL_HEIGHT 25
+#define TOTAL_HEIGHT 20
 
 #define RESET_COLOR "\033[0m"
 #define GREEN_COLOR "\033[0;32m"
@@ -31,6 +31,7 @@
 #define GPU_LABEL "GPU"
 #define RESOLUTION_LABEL "Resolution"
 #define PROCESSES_LABEL "Processes"
+#define BATTERY_LABEL "Battery"
 
 #define OS_ICON ""
 #define KERNEL_ICON ""
@@ -45,5 +46,6 @@
 #define GPU_ICON ""
 #define RESOLUTION_ICON ""
 #define PROCESSES_ICON ""
+#define BATTERY_ICON "󰁹"
 
 #endif // CONFIG_H
