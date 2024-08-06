@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <stdbool.h>
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -10,9 +9,12 @@
 #include <libgen.h>
 #include <sys/sysinfo.h>
 #include <sys/utsname.h>
+#include <stdbool.h>
+#include <fcntl.h>
+#include <sys/mman.h>
 #include "config.h"
 
-#define NUM_ICONS 13
+#define NUM_ICONS 14
 #define BUFFER_SIZE 1024
 #define ASCII_WIDTH 40
 #define MAX_OUTPUT_LENGTH 4096
@@ -22,8 +24,8 @@
 #endif
 
 typedef struct {
-    char *label;
-    char *command;
+    const char *label;
+    const char *command;
 } Command;
 
 char output_buffer[MAX_OUTPUT_LENGTH];
@@ -44,7 +46,6 @@ char *get_executable_path(char *buffer, size_t bufsize) {
     return buffer;
 }
 
-
 const char **read_ascii_art(const char *file_path, int *num_lines) {
     char exe_path[PATH_MAX];
     if (!get_executable_path(exe_path, sizeof(exe_path))) {
@@ -55,35 +56,67 @@ const char **read_ascii_art(const char *file_path, int *num_lines) {
     char ascii_file_path[PATH_MAX];
     snprintf(ascii_file_path, sizeof(ascii_file_path), "%s/%s", dirname(exe_path), file_path);
 
-    FILE *file = fopen(ascii_file_path, "r");
-    if (!file) {
-        perror("fopen");
+    int fd = open(ascii_file_path, O_RDONLY);
+    if (fd == -1) {
+        perror("open");
         return NULL;
     }
+
+    struct stat st;
+    if (fstat(fd, &st) == -1) {
+        perror("fstat");
+        close(fd);
+        return NULL;
+    }
+
+    char *mapped = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (mapped == MAP_FAILED) {
+        perror("mmap");
+        close(fd);
+        return NULL;
+    }
+
+    char *content_copy = malloc(st.st_size + 1);
+    if (!content_copy) {
+        perror("malloc");
+        munmap(mapped, st.st_size);
+        close(fd);
+        return NULL;
+    }
+
+    memcpy(content_copy, mapped, st.st_size);
+    content_copy[st.st_size] = '\0';
 
     const char **lines = malloc(TOTAL_HEIGHT * sizeof(char *));
     if (!lines) {
         perror("malloc");
-        fclose(file);
+        free(content_copy);
+        munmap(mapped, st.st_size);
+        close(fd);
         return NULL;
     }
 
-    char line[BUFFER_SIZE];
+    char *saveptr = NULL;
+    char *line = strtok_r(content_copy, "\n", &saveptr);
     int count = 0;
-    while (fgets(line, sizeof(line), file) && count < TOTAL_HEIGHT) {
-        line[strcspn(line, "\n")] = '\0';
+    while (line && count < TOTAL_HEIGHT) {
         lines[count] = strdup(line);
         if (!lines[count]) {
             perror("strdup");
             for (int i = 0; i < count; i++) free((void *)lines[i]);
             free(lines);
-            fclose(file);
+            free(content_copy);
+            munmap(mapped, st.st_size);
+            close(fd);
             return NULL;
         }
+        line = strtok_r(NULL, "\n", &saveptr);
         count++;
     }
 
-    fclose(file);
+    free(content_copy);
+    munmap(mapped, st.st_size);
+    close(fd);
     *num_lines = count;
     return lines;
 }
@@ -126,11 +159,11 @@ void init_static_info() {
 
 void append_to_output(const char *label, const char *data) {
     int required_space = snprintf(NULL, 0, "%-*s%s\n", INFO_WIDTH, label, data) + 1;
+    pthread_mutex_lock(&buffer_mutex);
     if (offset + required_space < MAX_OUTPUT_LENGTH) {
-        pthread_mutex_lock(&buffer_mutex);
         offset += snprintf(output_buffer + offset, MAX_OUTPUT_LENGTH - offset, "%-*s%s\n", INFO_WIDTH, label, data);
-        pthread_mutex_unlock(&buffer_mutex);
     }
+    pthread_mutex_unlock(&buffer_mutex);
 }
 
 void *fetch_and_append(void *arg) {
@@ -163,7 +196,6 @@ void append_static_info() {
     append_to_output(icon_label, shell);
 }
 
-
 void prepare_info_lines(const char *info_lines[], int *num_lines) {
     char *line = strtok(output_buffer, "\n");
     int index = 0;
@@ -174,13 +206,12 @@ void prepare_info_lines(const char *info_lines[], int *num_lines) {
     *num_lines = index;
 }
 
-
 void print_ascii_and_info(const char *info_lines[], int num_info_lines) {
     const char *icons[NUM_ICONS] = {
-        OS_ICON, KERNEL_ICON, HOSTNAME_ICON, SHELL_ICON, UPTIME_ICON, MEMORY_ICON, USED_MEMORY_ICON, CPU_ICON, CPU_CORES_ICON, DISK_ICON, GPU_ICON, RESOLUTION_ICON, PROCESSES_ICON
+        OS_ICON, KERNEL_ICON, HOSTNAME_ICON, SHELL_ICON, UPTIME_ICON, MEMORY_ICON, USED_MEMORY_ICON, CPU_ICON, CPU_CORES_ICON, DISK_ICON, GPU_ICON, RESOLUTION_ICON, PROCESSES_ICON, BATTERY_ICON
     };
     const char *labels[NUM_ICONS] = {
-        OS_LABEL, KERNEL_LABEL, HOSTNAME_LABEL, SHELL_LABEL, UPTIME_LABEL, MEMORY_LABEL, USED_MEMORY_LABEL, CPU_LABEL, CPU_CORES_LABEL, DISK_LABEL, GPU_LABEL, RESOLUTION_LABEL, PROCESSES_LABEL
+        OS_LABEL, KERNEL_LABEL, HOSTNAME_LABEL, SHELL_LABEL, UPTIME_LABEL, MEMORY_LABEL, USED_MEMORY_LABEL, CPU_LABEL, CPU_CORES_LABEL, DISK_LABEL, GPU_LABEL, RESOLUTION_LABEL, PROCESSES_LABEL, BATTERY_LABEL
     };
     const char *colors[] = {GREEN_COLOR, RED_COLOR, YELLOW_COLOR, BLUE_COLOR, MAGENTA_COLOR, CYAN_COLOR, WHITE_COLOR};
     int num_colors = sizeof(colors) / sizeof(colors[0]);
@@ -248,7 +279,8 @@ int main() {
         {" Disk", "df -h / | tail -1 | awk '{print $3 \"/\" $2 \" used (\" $5 \")\"}'"},
         {" GPU", "lspci | grep -i 'vga\\|3d\\|2d' | cut -d ':' -f 3 | sed 's/^ //'"}, 
         {" Resolution", "xdpyinfo | grep dimensions | awk '{print $2}'"},
-        {" Processes", "ps ax | wc -l | awk '{print $1 \" running\"}'"}
+        {" Processes", "ps ax | wc -l | awk '{print $1 \" running\"}'"},
+        {"🔋 Battery", "upower -i $(upower -e | grep 'BAT') | grep -E 'percentage|state' | awk -F': ' '{print $2}'"}
     };
 
     int num_commands = sizeof(commands) / sizeof(commands[0]);
@@ -261,7 +293,6 @@ int main() {
     for (int i = 0; i < num_commands; ++i) {
         pthread_join(threads[i], NULL);
     }
-
 
     const char *info_lines[TOTAL_HEIGHT] = {NULL};
     int num_info_lines = 0;
